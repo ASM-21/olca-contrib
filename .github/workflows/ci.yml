@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "17 6 * * 1"   # weekly, to catch upstream changes
+
+jobs:
+  released:
+    name: released packages (py${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: pip install -e ".[dev]"
+      - run: python -m pytest -v
+      - run: python examples/01_offline_workflow.py
+      - run: python examples/03_issue_reproductions.py
+
+  minimum:
+    name: minimum versions (olca-ipc 2.6.3)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]" "olca-ipc==2.6.3" "olca-schema==2.6.2"
+      - run: python -m pytest -v
+      - run: python examples/03_issue_reproductions.py
+
+  upstream-master:
+    name: upstream master
+    runs-on: ubuntu-latest
+    continue-on-error: true   # master may be mid-change; this is an early warning
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: |
+          pip install -e ".[dev]"
+          pip install "olca-schema @ git+https://github.com/GreenDelta/olca-schema.git#subdirectory=py"
+          pip install --no-deps "olca-ipc @ git+https://github.com/GreenDelta/olca-ipc.py.git"
+          python -c "import importlib.metadata as m; print(m.version('olca-ipc'), m.version('olca-schema'))"
+      - run: python -m pytest -v

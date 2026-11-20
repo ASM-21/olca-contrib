@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "olca-contrib"
+version = "0.4.0"
+description = "Community extensions for the openLCA Python IPC client"
+readme = "README.md"
+requires-python = ">=3.12"
+license = {text = "MPL-2.0"}
+authors = [{name = "Andrew Morrissey"}]
+keywords = ["openLCA", "LCA", "life-cycle-assessment", "manufacturing", "sustainability"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+    "olca-ipc>=2.6.3",
+    "olca-schema>=2.6.2",
+    "requests>=2.32.0",
+    "pandas>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "tqdm", "httpx"]
+carbon = ["httpx>=0.27.0"]
+all = ["tqdm", "httpx>=0.27.0"]
+
+[project.urls]
+Homepage = "https://github.com/ASM-21/olca-contrib"
+Issues = "https://github.com/ASM-21/olca-contrib/issues"
+
+[project.scripts]
+olca = "olca_contrib.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["olca_contrib*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

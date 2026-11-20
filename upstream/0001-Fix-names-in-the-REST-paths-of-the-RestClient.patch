@@ -1,0 +1,137 @@
+From 43f30a06a47037523e0d06db7fd916c9da14c62c Mon Sep 17 00:00:00 2001
+From: Andrew Morrissey <77601626+ASM-21@users.noreply.github.com>
+Date: Wed, 18 Nov 2026 03:47:01 +0000
+Subject: [PATCH] Fix names in the REST paths of the RestClient
+
+- get built the path `name/{name}` from the raw name, so requests cut
+  the name at a `#` (fragment) or `?` (query) and turned a `%41` into
+  `A`. The name is now percent-encoded. A `/` is kept, as the route
+  `name/<name>` accepts it, and all other names are sent as before.
+- get_descriptor with a name requested `name/{name}/info`, but the REST
+  API has no such route, and the route `name/<name>` takes `/info` as
+  part of the name. It now searches the descriptors of the type, like
+  find does.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_019GyumPCFYjWH1cVefmqSoG
+---
+ olca_ipc/rest.py         | 19 ++++++++++-------
+ tests/test_rest_paths.py | 44 ++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 56 insertions(+), 7 deletions(-)
+
+diff --git a/olca_ipc/rest.py b/olca_ipc/rest.py
+index 6e4ab81..275138a 100644
+--- a/olca_ipc/rest.py
++++ b/olca_ipc/rest.py
+@@ -1,5 +1,6 @@
+ import logging as log
+ from typing import Any, Callable, Type, TypeVar, cast, override
++from urllib.parse import quote
+ 
+ import olca_schema as o
+ import requests
+@@ -60,7 +61,7 @@ class RestClient(ProtoClient):
+         if uid:
+             path = f"data/{_path_of(model_type)}/{uid}"
+         else:
+-            path = f"data/{_path_of(model_type)}/name/{name}"
++            path = f"data/{_path_of(model_type)}/name/{_quote_name(name)}"
+         return cast(E, self._get(path, model_type.from_dict))
+ 
+     @override
+@@ -92,12 +93,9 @@ class RestClient(ProtoClient):
+             return self._get(
+                 f"data/{_path_of(model_type)}/{uid}/info", o.Ref.from_dict
+             )
+-        if name is not None:
+-            return self._get(
+-                f"data/{_path_of(model_type)}/name/{name}/info",
+-                o.Ref.from_dict,
+-            )
+-        return None
++        # the REST API has no route for a descriptor by name; the route
++        # `name/<name>` would take `/info` as part of the name
++        return self.find(model_type, cast(str, name))
+ 
+     @override
+     def get_providers(
+@@ -685,6 +683,13 @@ def _not_ok(resp: requests.Response) -> bool:
+     return True
+ 
+ 
++def _quote_name(name: str | None) -> str:
++    # encodes `#`, `?`, and `%` so that the full name is in the path; the
++    # other characters are kept as requests would send them, e.g. a `/`
++    # that the route `name/<name>` accepts
++    return quote(name or "", safe="/,;!$&'()*+=:@~")
++
++
+ def _tech_id(tech_flow: o.TechFlow) -> str:
+     tech_id = ""
+     if tech_flow.provider and tech_flow.provider.id:
+diff --git a/tests/test_rest_paths.py b/tests/test_rest_paths.py
+index 27fde75..3d65738 100644
+--- a/tests/test_rest_paths.py
++++ b/tests/test_rest_paths.py
+@@ -1,7 +1,9 @@
+ import unittest
+ from unittest import mock
++from urllib.parse import unquote, urlsplit
+ 
+ import olca_schema as o
++import requests
+ 
+ from olca_ipc.rest import RestClient
+ 
+@@ -46,6 +48,48 @@ class RestPathTest(unittest.TestCase):
+             self.assertIsNone(self.client.delete(o.Ref(id="x")))
+         req.assert_not_called()
+ 
++    def test_get_for_name(self):
++        # the server must receive the full name; checks the URL as requests
++        # sends it, where `#` starts a fragment and `?` a query
++        names = [
++            "Mass",
++            "yoghurt, 12% fat",
++            "Gas, natural/m3",
++            "#2 fuel oil",
++            "steel? or iron",
++            "blend 50%41",
++            "Ölsaaten (rapeseed)",
++        ]
++        prefix = "/data/flows/name/"
++        for name in names:
++            with self.subTest(name=name):
++                with mock.patch("requests.get") as req:
++                    req.return_value.status_code = 200
++                    req.return_value.json.return_value = {"@id": "f"}
++                    self.client.get(o.Flow, name=name)
++                sent = requests.Request("GET", req.call_args.args[0])
++                url = urlsplit(sent.prepare().url)
++                self.assertEqual("", url.query)
++                self.assertEqual("", url.fragment)
++                self.assertTrue(url.path.startswith(prefix))
++                self.assertEqual(name, unquote(url.path[len(prefix) :]))
++
++    def test_get_descriptor_for_name(self):
++        # there is no REST route for a descriptor by name, so the client
++        # searches the descriptors of the type
++        refs = [
++            {"@type": "Flow", "@id": "f1", "name": "steel"},
++            {"@type": "Flow", "@id": "f2", "name": "iron"},
++        ]
++        for name, uid in [("iron", "f2"), ("copper", None)]:
++            with self.subTest(name=name):
++                with mock.patch("requests.get") as req:
++                    req.return_value.status_code = 200
++                    req.return_value.json.return_value = refs
++                    ref = self.client.get_descriptor(o.Flow, name=name)
++                req.assert_called_once_with(f"{_URL}data/flows")
++                self.assertEqual(uid, ref.id if ref else None)
++
+ 
+ if __name__ == "__main__":
+     unittest.main()
+-- 
+2.43.0
+

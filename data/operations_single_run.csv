@@ -1,0 +1,11 @@
+operation_name,uuid,energy_kwh,duration_s,machine,grid_region
+CNC_Facing,op-0000-cnc_facing,0.347,45,VMX30Ui,MISO_INDY
+CNC_Roughing,op-0001-cnc_roughing,0.892,210,VMX30Ui,MISO_INDY
+CNC_Drilling,op-0002-cnc_drilling,0.156,28,VMX30Ui,MISO_INDY
+CNC_Boring,op-0003-cnc_boring,0.203,38,VMX30Ui,MISO_INDY
+CNC_Tapping,op-0004-cnc_tapping,0.098,19,VMX30Ui,MISO_INDY
+CNC_Finishing,op-0005-cnc_finishing,0.421,96,VMX30Ui,MISO_INDY
+CNC_Deburring,op-0006-cnc_deburring,0.067,14,VMX30Ui,MISO_INDY
+FDM_Print_Bracket,op-0007-fdm_print_bracket,1.84,6300,UltimakerS5,MISO_INDY
+FDM_Print_Jig,op-0008-fdm_print_jig,0.96,3240,UltimakerS5,MISO_INDY
+PolyJet_Print_Cap,op-0009-polyjet_print_cap,2.31,5400,StratasysJ55,MISO_INDY

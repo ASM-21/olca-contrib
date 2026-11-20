@@ -1,0 +1,11 @@
+operation,measured_kwh,default_kwh
+CNC_Facing,0.347,0.477
+CNC_Roughing,0.892,1.2537
+CNC_Drilling,0.156,0.2404
+CNC_Boring,0.203,0.3391
+CNC_Tapping,0.098,0.1394
+CNC_Finishing,0.421,0.5468
+CNC_Deburring,0.067,0.0866
+FDM_Print_Bracket,1.84,2.9396
+FDM_Print_Jig,0.96,1.5743
+PolyJet_Print_Cap,2.31,2.8024
